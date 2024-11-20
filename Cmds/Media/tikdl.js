@@ -1,25 +1,38 @@
+const fetch = require("node-fetch");
+
 module.exports = async (context) => {
+    const { client, botname, m, text, fetchJson } = context;
 
-const { client, m, text, botname } = context;
+    try {
+        if (!text) return m.reply("Provide a TikTok link for the video.");
+        if (!text.includes("tiktok.com")) return m.reply("That is not a valid TikTok link.");
 
-if (!text) return m.reply("Provide a tiktok link for the video");
+        const data = await fetchJson(`https://api.dreaded.site/api/tiktok?url=${text}`);
 
-if (!text.includes('tiktok.com')) return m.reply("That is not a tiktok link.");
+        if (!data || data.status !== 200 || !data.tiktok || !data.tiktok.video) {
+            return m.reply(`API Error: ${data?.message || "Invalid API response"}`);
+        }
 
-try {
+        const tikVideoUrl = data.tiktok.video;
 
-const response = await fetch(`https://api.prabath-md.tech/api/tiktokdl?url=${text}`);
-const data = await response.json();
+      
+        const response = await fetch(tikVideoUrl);
+
+        if (!response.ok) {
+            return m.reply(`Failed to fetch video: HTTP ${response.status}`);
+        }
+
+        const videoBuffer = Buffer.from(await response.arrayBuffer());
+
+await client.sendMessage(m.chat, {
+  video: { url: tikVideoUrl },
+mimetype: "video/mp4",
+ fileName: `video.mp4`}, { quoted: m });
 
 
-const tikvid = data.data.no_wm;
-
-await client.sendMessage(m.chat,{video : {url : tikvid },caption : `Downloaded by ${botname}`,gifPlayback : false },{quoted : m}) 
-
-} catch (e) {
-
-m.reply("An error occured. API might be down" + e)
-
-}
-
-}
+      
+        
+    } catch (error) {
+        m.reply(`Error: ${error.message}`);
+    }
+};
